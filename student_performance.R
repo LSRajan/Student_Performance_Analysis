@@ -9,6 +9,31 @@ data |> head()
 #check NA
 sum(is.na(data))
 
+data |> distinct(Teacher_Quality) #Seems to be secret missing values in this column
+data |> filter(Teacher_Quality == "") |> nrow() #78 rows
+#Given the distribution of this data (explored later), it would be reasonable to impute a "Medium" value to begin
+data <- data |> 
+  mutate(Teacher_Quality = case_when(
+    Teacher_Quality == "" ~ "Medium",
+    TRUE ~ Teacher_Quality
+  ))
+
+data |> filter(Distance_from_Home == "") |> nrow() #67 rows
+#It also makes sense to impute "Near" here
+data <- data |> 
+  mutate(Distance_from_Home = case_when(
+    Distance_from_Home == "" ~ "Near",
+    TRUE ~ Distance_from_Home
+  ))
+
+data |> filter(Parental_Education_Level == "") |> nrow()
+#Might be wrong to impute high school since distribution is more spread out, but fine for now
+data <- data |> 
+  mutate(Parental_Education_Level = case_when(
+    Parental_Education_Level == "" ~ "High School",
+    TRUE ~ Parental_Education_Level
+  ))
+
 #
 summary(data)
 
@@ -27,6 +52,7 @@ ggplot(data, aes(x = Attendance)) +
   labs(x = "% Attendance", y = "Count", 
        title = "Pupil attendance seems fairly evenly spread out, except for the beginning and end")
 
+#Bar Plots -----
 ggplot(data, aes(x = Parental_Involvement)) +
   geom_bar() +
   labs(x = "Parental Involvement", y = "Count", title = "Distribution of parental involvement",
@@ -42,15 +68,25 @@ ggplot(data, aes(x = Motivation_Level)) +
   labs(x = "Motivation Level", y = "Count", title = "Distribution of Motivation Levels",
        subtitle = "This has a different distribution to the previous two")
 
-#The above two are incredibly similar, possible correlation to explore later
+ggplot(data, aes(x = Family_Income)) +
+  geom_bar() +
+  labs(x = "Family Income", y = "Count", title = "Much fewer high family incomes than anything else")
 
+ggplot(data, aes(x = Teacher_Quality)) +
+  geom_bar() +
+  labs(x = "Teacher Quality", y = "Count", title = "Relatively few poor teachers, mostly medium quality")
 
-#access to resources is not parent dependent but rather environment dependent, so this isnt useful to graph.
-#ggplot(data, aes(x = Access_to_Resources, fill = Parental_Involvement)) +
-#  geom_bar(position = "fill") +
-#  labs(x = "Access to Resources", y = "Proportion", 
-#       title = "There doesnt seem to be much difference in parental involvement across different 
-#       access to resources")
+ggplot(data, aes(x = Peer_Influence)) +
+  geom_bar() +
+  labs(x = "Peer Influence", y = "Count")
+
+ggplot(data, aes(x = Distance_from_Home)) +
+  geom_bar() +
+  labs(x = "Distance From Home", y = "Count")
+
+ggplot(data, aes(x = Parental_Education_Level)) +
+  geom_bar() +
+  labs(x = "Parental Education Level", y = "Count")
 
 data |> 
   select(Extracurricular_Activities) |> 
@@ -75,6 +111,50 @@ data |>
             vjust = 1.5,
             colour = "white",
             size = 6)
+
+data |> 
+  select(School_Type) |> 
+  group_by(School_Type) |> 
+  summarise(num = n()) |> 
+  ggplot(aes(x = School_Type,  y = num)) +
+  geom_bar(stat = "identity") +
+  labs(x = "School Type", y = "Count") +
+  geom_text(aes(label = num),
+            vjust = 1.5,
+            colour = "white",
+            size = 6)
+
+data |> 
+  select(Learning_Disabilities) |> 
+  group_by(Learning_Disabilities) |> 
+  summarise(num = n()) |> 
+  ggplot(aes(x = Learning_Disabilities, y = num)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = num),
+            vjust = 1.5,
+            colour = "white",
+            size = 6)
+
+data |> 
+  select(Gender) |> 
+  group_by(Gender) |> 
+  summarise(num = n()) |> 
+  ggplot(aes(x = Gender, y = num)) +
+  geom_bar(stat = "identity") + 
+  labs(y = "Count", title = "The data seems to be imbalanced in terms of gender") +
+  geom_text(aes(label = num),
+            vjust = 1.5,
+            colour = "white",
+            size = 6)
+
+ #access to resources is not parent dependent but rather environment dependent, so this isnt useful to graph.
+#ggplot(data, aes(x = Access_to_Resources, fill = Parental_Involvement)) +
+#  geom_bar(position = "fill") +
+#  labs(x = "Access to Resources", y = "Proportion", 
+#       title = "There doesnt seem to be much difference in parental involvement across different 
+#       access to resources")
+
+
 
 data |> 
   ggplot(aes(x = Sleep_Hours)) +
@@ -102,5 +182,12 @@ data |>
   ggplot(aes(x = Previous_Scores, y = Exam_Score)) +
   geom_jitter(alpha = .3) +
   labs(x = "Previous Exam Score", y = "Final Exam Score", 
-       title = "There seems to be very little correlation between previous and final exam scores")
+       title = "There seems to be very little correlation between previous and final exam scores",
+       subtitle = "Although the distribution of points does slightly change between lowester and highest previous exam scores")
 cor(data$Previous_Scores, data$Exam_Score)
+
+data |> 
+  ggplot(aes(x = Exam_Score)) +
+  geom_histogram(binwidth = 5) +
+  labs(x = "Exam Score", y = "Count", title = "This exam score distribution brings a lot of difficulty",
+       subtitle = "If almost all exam scores are about the same, there isnt much to predict")
