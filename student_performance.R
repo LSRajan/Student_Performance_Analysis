@@ -191,3 +191,36 @@ data |>
   geom_histogram(binwidth = 5) +
   labs(x = "Exam Score", y = "Count", title = "This exam score distribution brings a lot of difficulty",
        subtitle = "If almost all exam scores are about the same, there isnt much to predict")
+
+#What influences exam score?
+
+data |> 
+  ggplot(aes(x = Hours_Studied, y = Exam_Score)) +
+  geom_jitter(alpha = .4) +
+  labs(x = "Hours Studied", y = "Exam Score",
+       title = "Hours studied has some influence on exam results")
+
+data |> 
+  ggplot(aes(x = Exam_Score)) +
+  geom_histogram(binwidth = 2) +
+  facet_wrap(~Internet_Access, scales = "free_y") +
+  labs(x = "Exam Score", y = "Count", title = "Internet access doesnt strongly influence the exam score distribution")
+
+data |> 
+  ggplot(aes(x = Exam_Score)) +
+  geom_histogram(binwidth = 2) +
+  facet_wrap(~Gender, scales = "free_y") +
+  labs(x = "Exam Score", y = "Count", title = "Neither does gender")
+
+data |> 
+  ggplot(aes(x = Exam_Score)) +
+  geom_histogram(binwidth = 2) +
+  facet_wrap(~Learning_Disabilities, scales = "free_y") +
+  labs(x = "Exam Score", y = "Count", title = "Somehow learning difficulty has little influence")
+
+data |> 
+  ggplot(aes(x = Exam_Score)) +
+  geom_histogram(binwidth = 2) +
+  facet_wrap(~Access_to_Resources, scales = "free_y") +
+  labs(x = "Exam Score", y = "Count", title = "High access to resources might influence exam results")
+
