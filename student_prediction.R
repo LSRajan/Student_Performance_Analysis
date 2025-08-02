@@ -74,17 +74,45 @@ dt1 <- rpart(
 )
 rpart.plot(dt1)
 
-ames_dt2 <- train(
+dt2 <- train(
   Exam_Score ~ .,
   data = num_train,
   method = "rpart",
   trControl = trainControl(method = "cv", number = 10),
   tuneLength = 20
 )
-ggplot(ames_dt2)
+ggplot(dt2)
 
 #It seems the effort put in is the most important thing
-vip(ames_dt2, num_features = 10, bar = FALSE) +
+vip(dt2, num_features = 10, bar = FALSE) +
   labs(x = "Variable", title = "There a few very relevant variables, the rest are less useful",
        subtitle = "Hours studying and Attendance are intuitive in their importance, so this seems reasonable")
+
+ggplot(data, aes(x = Attendance, y = Exam_Score)) +
+  geom_jitter(alpha = .4) +
+  labs(y = "Exam Score", title = "The impact of attendance is evident")
+ggplot(data, aes(x = Hours_Studied, y = Exam_Score)) +
+  geom_jitter(alpha = .4) +
+  labs(x = "Hours Studied", y = "Exam Score", title = "The impact of study hours is also evident")
+ggplot(data, aes(x = Exam_Score)) +
+  geom_histogram(binwdith = 2) +
+  facet_wrap(~Access_to_Resources, scales = "free_y") +
+  labs(x = "Exam Score", y = "Count", title = "A high access to resources does seem to have higher exam scores")
+
+#Bagging the decision tree
+library(ipred)  
+
+set.seed(123)
+bag_1 <- bagging(
+  formula = Exam_Score ~ .,
+  data = num_train,
+  nbagg = 100,
+  coob = TRUE,
+  control = rpart.control(minsplit = 2, cp = 0)
+)
+
+#Comparing decision tree RMSE vs bagged tree RMSE
+min(dt2$results$RMSE)
+bag_1$err
+
 
