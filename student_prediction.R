@@ -5,6 +5,12 @@ library(vip)
 library(ggplot2)
 
 #Using models to try and find some ability to predict performance despite difficult distribution
+#Important note: this is primarily me applying what I've learnt from: 
+#Hands-On Machine Learning with R - Bradley Boehmke & Brandon Greenwell -2020-02-01
+#There are models that are mostly the same, this is more me applying and trying to understand better how they work and how to use them
+
+
+
 
 split <- initial_split(data, prop = .7)
 data_train <- training(split)
@@ -111,8 +117,99 @@ bag_1 <- bagging(
   control = rpart.control(minsplit = 2, cp = 0)
 )
 
-#Comparing decision tree RMSE vs bagged tree RMSE
+#Comparing decision tree RMSE vs bagged tree RMSE, bagging improved performance.
+#This is expected, decision trees have higher variance, bagging is a way of reducing this variance
 min(dt2$results$RMSE)
 bag_1$err
 
 
+#notes for RF model
+#mtry needs to be higher due to less relevant parameters
+#n_trees: A good rule of thumb is to start with 10 times the number of features
+
+
+#
+
+library(ranger)
+library(h2o)
+
+h2o.no_progress()
+h2o.init(max_mem_size = "5g")
+
+train_h2o <- as.h2o(num_train)
+
+predictors <- setdiff(colnames(num_train), "Exam_Score")
+
+num_features <- length(predictors)
+
+h2o_rf_baseline <- h2o.randomForest(
+  x = predictors,
+  y = "Exam_Score",
+  training_frame = train_h2o,
+  ntrees = num_predictors * 10,
+  seed = 123
+)
+h2o_rf_baseline
+
+
+#Used a higher set of values for mtries, there are seemingly fewer relevant predictors as seen before so
+#a higher mtries value is needed. (Without this, its more likely to get a selection of variables that arent relevant)
+hyper_grid <- list(
+  mtries = floor(num_features * c(.15, .25, .333, .4, .5)),
+  min_rows = c(1, 3, 5, 10),
+  max_depth = c(10, 20, 30),
+  sample_rate = c(.55, .632, .70, .80)
+)
+
+search_criteria <- list(
+  strategy = "RandomDiscrete",
+  stopping_metric = "mse",
+  stopping_tolerance = 0.001,
+  stopping_rounds = 10,    
+  max_runtime_secs = 60*5  
+)
+
+random_grid <- h2o.grid(
+  algorithm = "randomForest",
+  grid_id = "rf_random_grid",
+  x = predictors, 
+  y = "Exam_Score", 
+  training_frame = train_h2o,
+  hyper_params = hyper_grid,
+  ntrees = num_features * 10,
+  seed = 123,
+  stopping_metric = "RMSE",   
+  stopping_rounds = 10,          
+  stopping_tolerance = 0.005,     
+  search_criteria = search_criteria
+)
+random_grid_perf <- h2o.getGrid(
+  grid_id = "rf_random_grid", 
+  sort_by = "mse", 
+  decreasing = FALSE
+)
+
+#train a model with the best performaing hyperparameters
+
+h2o_rf_best <- h2o.randomForest(
+  x = predictors,
+  y = "Exam_Score",
+  training_frame = train_h2o,
+  ntrees = num_predictors * 10,
+  mtries = 9,
+  min_rows = 3,
+  max_depth = 30,
+  sample_rate = 0.632,
+  seed = 123
+)
+
+#very similar results between baseline and model after gridsearch.
+h2o_rf_baseline@model$training_metrics@metrics$RMSE
+h2o_rf_best@model$training_metrics@metrics$RMSE
+
+#This uses MDI for variable importance, not quite the same as the measure before
+h2o_rf_best@model$variable_importances |> 
+  ggplot(aes(x = scaled_importance, y = fct_reorder(variable, scaled_importance))) +
+  geom_bar(stat = "identity") +
+  labs(y = "Variable", x = "Scaled Importance", title = "The same predictors seem to be as important again",
+       subtitle = "Attendance, hours of study and previous exam score are consistently the more important variables")
